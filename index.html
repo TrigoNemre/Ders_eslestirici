@@ -352,8 +352,8 @@ function enterApp() {
   const raw = document.getElementById('welcomeKeyInput').value;
   const key = raw.replace(/[^\x20-\x7E]/g,'').trim();
   const err = document.getElementById('welcomeErr');
-  if (!key.startsWith('AIza')) {
-    err.textContent = '"AIza" ile başlamalı. aistudio.google.com/app/apikey adresinden alabilirsiniz.';
+  if (key.length < 10) {
+    err.textContent = 'Geçersiz anahtar — tekrar kopyalamayı deneyin.';
     err.style.display = 'block'; return;
   }
   localStorage.setItem('gemini_key', key);
@@ -571,6 +571,10 @@ function setLoading(on,lbl='') {
 function showErr(m){const b=document.getElementById('errBox');b.textContent=m;b.style.display='block';}
 function hideErr(){document.getElementById('errBox').style.display='none';}
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')analyze();});
+</script>
+</body>
+</html>
+
 </script>
 </body>
 </html>
