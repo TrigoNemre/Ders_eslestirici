@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seçmeli Ders Eşleştirici — HÜ</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f5f4f1; --surface:#fff; --border:#e2dfd8; --border-h:#c8c4bc;
+  --text:#1c1c1a; --muted:#6b6860; --accent:#1c1c1a;
+  --green-bg:#edf7f0; --green:#1a6636;
+  --amber-bg:#fef9ec; --amber:#925c0a;
+  --red-bg:#fef2f2; --red:#991b1b;
+  --r:10px;
+}
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+       background:var(--bg); color:var(--text); min-height:100vh; font-size:14px; line-height:1.6; }
+
+/* ── KARŞILAMA EKRANI ── */
+.welcome-overlay {
+  position:fixed; inset:0; background:#f5f4f1; display:flex;
+  align-items:center; justify-content:center; z-index:100; padding:24px;
+}
+.welcome-card {
+  background:#fff; border:1px solid var(--border); border-radius:16px;
+  padding:40px 36px; max-width:440px; width:100%;
+  box-shadow:0 4px 24px rgba(0,0,0,0.08);
+}
+.welcome-logo {
+  width:48px; height:48px; background:var(--accent); border-radius:12px;
+  display:flex; align-items:center; justify-content:center; margin-bottom:20px;
+}
+.welcome-logo svg { width:26px; height:26px; fill:none; stroke:#fff; stroke-width:2; }
+.welcome-title { font-size:20px; font-weight:700; margin-bottom:4px; }
+.welcome-sub { font-size:13px; color:var(--muted); margin-bottom:28px; line-height:1.5; }
+.welcome-label { font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase;
+                 letter-spacing:.05em; margin-bottom:8px; display:block; }
+.welcome-input-row { display:flex; gap:8px; margin-bottom:10px; }
+.welcome-key-input {
+  flex:1; border:1px solid var(--border); border-radius:var(--r);
+  padding:10px 13px; font-size:13.5px; font-family:monospace;
+  background:#faf9f7; outline:none; color:var(--text);
+  transition:border-color .15s;
+}
+.welcome-key-input:focus { border-color:var(--accent); background:#fff; }
+.welcome-enter-btn {
+  background:var(--accent); color:#fff; border:none; border-radius:var(--r);
+  padding:0 18px; font-size:13.5px; font-weight:600; cursor:pointer;
+  font-family:inherit; transition:background .15s; white-space:nowrap;
+}
+.welcome-enter-btn:hover { background:#333; }
+.welcome-hint {
+  font-size:12px; color:var(--muted); line-height:1.6;
+  padding:12px; background:#faf9f7; border-radius:8px; border:1px solid var(--border);
+}
+.welcome-hint a { color:var(--text); font-weight:500; }
+.welcome-err { font-size:12.5px; color:var(--red); margin-top:8px; display:none; }
+.welcome-badge {
+  display:inline-flex; align-items:center; gap:5px; margin-bottom:24px;
+  font-size:11.5px; font-weight:500; color:var(--green);
+  background:var(--green-bg); padding:4px 10px; border-radius:20px;
+}
+.welcome-badge svg { width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2.5; }
+
+/* ── ANA LAYOUT ── */
+.layout { display:flex; min-height:100vh; }
+.sidebar { width:340px; min-width:300px; background:var(--surface);
+           border-right:1px solid var(--border); display:flex; flex-direction:column;
+           position:sticky; top:0; height:100vh; overflow-y:auto; }
+.main { flex:1; overflow-y:auto; padding:28px 32px; }
+
+/* sidebar head */
+.sidebar-head { padding:18px 20px 14px; border-bottom:1px solid var(--border); }
+.brand { display:flex; align-items:center; gap:10px; }
+.brand-icon { width:30px; height:30px; background:var(--accent); border-radius:7px;
+              display:flex; align-items:center; justify-content:center; }
+.brand-icon svg { width:16px; height:16px; fill:none; stroke:#fff; stroke-width:2; }
+.brand-name { font-size:13.5px; font-weight:600; }
+.brand-sub  { font-size:11px; color:var(--muted); }
+.head-row { display:flex; align-items:center; justify-content:space-between; margin-top:10px; }
+.db-badge { display:inline-flex; align-items:center; gap:5px;
+            background:var(--green-bg); color:var(--green);
+            font-size:11px; font-weight:500; padding:3px 9px; border-radius:20px; }
+.db-dot { width:5px; height:5px; background:#22c55e; border-radius:50%; }
+.change-key-btn { font-size:11px; color:var(--muted); background:none; border:none;
+                  cursor:pointer; padding:2px 6px; border-radius:5px; font-family:inherit;
+                  transition:background .12s; }
+.change-key-btn:hover { background:#f0ede8; color:var(--text); }
+
+/* form */
+.sidebar-body { padding:16px 20px; flex:1; display:flex; flex-direction:column; gap:13px; }
+.field { display:flex; flex-direction:column; gap:5px; }
+.field label { font-size:11.5px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.field input, .field textarea {
+  border:1px solid var(--border); border-radius:var(--r); padding:9px 11px;
+  font-size:13.5px; color:var(--text); background:#faf9f7; font-family:inherit; outline:none;
+  transition:border-color .15s;
+}
+.field input:focus, .field textarea:focus { border-color:var(--accent); background:#fff; }
+.field textarea { resize:vertical; min-height:90px; line-height:1.55; }
+
+/* tabs */
+.tabs { display:flex; background:#f0ede8; border-radius:8px; padding:3px; gap:2px; }
+.tab-btn { flex:1; border:none; background:transparent; border-radius:6px;
+           padding:6px 4px; font-size:11.5px; font-weight:500; color:var(--muted);
+           cursor:pointer; transition:background .15s, color .15s; font-family:inherit;
+           display:flex; align-items:center; justify-content:center; gap:4px; }
+.tab-btn svg { width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:2; }
+.tab-btn.active { background:#fff; color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.tab-panel { display:none; flex-direction:column; gap:8px; }
+.tab-panel.active { display:flex; }
+
+/* pdf zone */
+.pdf-zone { border:1.5px dashed var(--border); border-radius:var(--r); padding:16px 12px;
+            text-align:center; cursor:pointer; transition:border-color .15s, background .15s;
+            background:#faf9f7; position:relative; }
+.pdf-zone:hover, .pdf-zone.drag-over { border-color:var(--accent); background:#f0efec; }
+.pdf-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.pdf-zone-icon svg { width:22px; height:22px; stroke:var(--muted); fill:none; stroke-width:1.5; margin-bottom:5px; }
+.pdf-zone-text { font-size:12px; color:var(--muted); line-height:1.4; }
+.pdf-zone-text strong { color:var(--text); }
+.pdf-loaded { display:none; align-items:center; gap:8px;
+              background:var(--green-bg); border:1px solid #bbf7d0;
+              border-radius:var(--r); padding:8px 11px; }
+.pdf-loaded svg { width:14px; height:14px; stroke:var(--green); fill:none; stroke-width:2.5; flex-shrink:0; }
+.pdf-loaded-name { font-size:12px; color:var(--green); font-weight:500; flex:1;
+                   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pdf-clear { background:none; border:none; cursor:pointer; color:var(--green); font-size:17px; padding:0 2px; line-height:1; }
+
+/* link */
+.link-row { display:flex; gap:6px; }
+.link-row input { flex:1; }
+.link-fetch-btn { background:var(--accent); color:#fff; border:none; border-radius:var(--r);
+                  padding:0 12px; font-size:12px; font-weight:500; cursor:pointer;
+                  font-family:inherit; white-space:nowrap; transition:background .15s; }
+.link-fetch-btn:hover { background:#333; }
+.link-fetch-btn:disabled { background:#aaa; cursor:not-allowed; }
+.link-status { font-size:12px; padding:7px 10px; border-radius:8px; display:none; }
+.link-status.ok  { background:var(--green-bg); color:var(--green); display:block; }
+.link-status.err { background:var(--red-bg); color:var(--red); display:block; }
+
+/* analyze btn */
+.analyze-btn { display:flex; align-items:center; justify-content:center; gap:8px;
+               background:var(--accent); color:#fff; border:none; border-radius:var(--r);
+               padding:11px; font-size:13.5px; font-weight:500; cursor:pointer;
+               font-family:inherit; width:100%; transition:background .15s, transform .1s; margin-top:4px; }
+.analyze-btn:hover { background:#333; }
+.analyze-btn:active { transform:scale(.98); }
+.analyze-btn:disabled { background:#aaa; cursor:not-allowed; transform:none; }
+.analyze-btn svg { width:15px; height:15px; stroke:#fff; fill:none; stroke-width:2; }
+.spin { animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.err-box { display:none; background:var(--red-bg); border:1px solid #fecaca;
+           border-radius:var(--r); padding:10px 12px; font-size:12.5px; color:var(--red); line-height:1.5; }
+
+.sidebar-footer { padding:11px 20px; border-top:1px solid var(--border); font-size:11px; color:#bbb; }
+
+/* main */
+.page-title { font-size:22px; font-weight:700; margin-bottom:4px; }
+.page-sub { font-size:13px; color:var(--muted); margin-bottom:24px; }
+.state-empty { display:flex; flex-direction:column; align-items:center; justify-content:center;
+               min-height:380px; gap:12px; text-align:center; }
+.state-empty svg { width:44px; height:44px; stroke:#d1cec8; fill:none; stroke-width:1.2; }
+.state-empty p { font-size:14px; color:var(--muted); max-width:280px; }
+.state-loading { display:none; flex-direction:column; align-items:center; justify-content:center; min-height:380px; gap:16px; }
+.loading-spinner { width:34px; height:34px; border:3px solid #e5e2db; border-top-color:var(--accent); border-radius:50%; animation:spin .75s linear infinite; }
+.loading-label { font-size:13px; color:var(--muted); }
+.results { display:none; }
+.summary-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
+                padding:16px 18px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+.summary-label { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:6px; }
+.summary-text  { font-size:13.5px; line-height:1.65; }
+.results-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.results-title { font-size:15px; font-weight:600; }
+.count-pill { font-size:11px; background:#f0ede8; color:var(--muted); padding:3px 10px; border-radius:20px; }
+.match-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
+              padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,.04); transition:border-color .15s; }
+.match-card:hover { border-color:var(--border-h); }
+.match-top { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
+.match-code { font-size:10px; font-weight:700; background:var(--accent); color:#fff;
+              padding:2px 8px; border-radius:5px; white-space:nowrap; margin-top:2px; }
+.match-name { font-size:13.5px; font-weight:500; flex:1; line-height:1.4; }
+.score-pill { font-size:11.5px; font-weight:500; padding:2px 9px; border-radius:20px; white-space:nowrap; }
+.score-high { background:var(--green-bg); color:var(--green); }
+.score-mid  { background:var(--amber-bg); color:var(--amber); }
+.score-low  { background:var(--red-bg); color:var(--red); }
+.tags-label { font-size:11px; color:var(--muted); margin-bottom:5px; }
+.tags { display:flex; flex-wrap:wrap; gap:5px; }
+.tag { font-size:11.5px; background:#f5f4f1; color:#444; padding:3px 9px; border-radius:20px; border:1px solid var(--border); }
+.match-footer { margin-top:10px; padding-top:10px; border-top:1px solid #f5f4f1; display:flex; align-items:center; gap:10px; }
+.match-reason { font-size:12px; color:var(--muted); flex:1; line-height:1.5; }
+.pdf-btn { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:500;
+           color:var(--text); border:1px solid var(--border); border-radius:7px; padding:5px 10px;
+           text-decoration:none; white-space:nowrap; transition:background .12s; flex-shrink:0; }
+.pdf-btn:hover { background:var(--bg); }
+.pdf-btn svg { width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:2; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     KARŞILAMA / API KEY EKRANI
+══════════════════════════════════════════ -->
+<div class="welcome-overlay" id="welcomeOverlay">
+  <div class="welcome-card">
+    <div class="welcome-logo">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <div class="welcome-badge">
+      <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Hacettepe Üniversitesi · 4 AKTS · 93 Ders
+    </div>
+    <div class="welcome-title">Seçmeli Ders İçerik Eşleştirici</div>
+    <div class="welcome-sub">
+      Yeni bir dersin içeriğini girin — mevcut seçmeli derslerle ortak konular yapay zeka ile tespit edilsin.<br><br>
+      Kullanmak için bir <strong>Anthropic API anahtarı</strong> gereklidir. Anahtar yalnızca sizin tarayıcınızda saklanır, hiçbir sunucuya gönderilmez.
+    </div>
+    <label class="welcome-label">Anthropic API Anahtarı</label>
+    <div class="welcome-input-row">
+      <input class="welcome-key-input" type="password" id="welcomeKeyInput"
+             placeholder="sk-ant-api03-..." />
+      <button class="welcome-enter-btn" onclick="enterApp()">Giriş →</button>
+    </div>
+    <div class="welcome-err" id="welcomeErr"></div>
+    <div class="welcome-hint">
+      Henüz anahtarın yoksa →
+      <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+      adresine git · <strong>API Keys</strong> → <strong>Create Key</strong><br>
+      Ücretsiz 5$ kredi ile başlarsın (~300 analiz)
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:#bbb;text-align:right">
+      Tasarım &amp; Geliştirme: <strong style="color:#888">Emre Yıldırım</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     ANA UYGULAMA
+══════════════════════════════════════════ -->
+<div class="layout" id="appLayout" style="display:none">
+
+<aside class="sidebar">
+  <div class="sidebar-head">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">Seçmeli Ders Eşleştirici</div>
+        <div class="brand-sub">Hacettepe Üniversitesi · 4 AKTS</div>
+      </div>
+    </div>
+    <div class="head-row">
+      <div class="db-badge"><div class="db-dot"></div><span id="dbCount">93</span> ders</div>
+      <button class="change-key-btn" onclick="changeKey()">🔑 Anahtarı değiştir</button>
+    </div>
+  </div>
+
+  <div class="sidebar-body">
+    <div class="field">
+      <label>Ders Adı *</label>
+      <input type="text" id="dersAdi" placeholder="örn. Yapay Zeka ve Etik" />
+    </div>
+    <div class="field">
+      <label>Ders Kodu (opsiyonel)</label>
+      <input type="text" id="dersKodu" placeholder="örn. SEC700" />
+    </div>
+    <div class="field">
+      <label>İçerik Kaynağı</label>
+      <div class="tabs">
+        <button class="tab-btn active" id="tabPdf" onclick="switchTab('pdf')">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF
+        </button>
+        <button class="tab-btn" id="tabLink" onclick="switchTab('link')">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link
+        </button>
+        <button class="tab-btn" id="tabText" onclick="switchTab('text')">
+          <svg viewBox="0 0 24 24"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/></svg>Metin
+        </button>
+      </div>
+
+      <div class="tab-panel active" id="panelPdf">
+        <div class="pdf-zone" id="pdfZone">
+          <input type="file" id="pdfInput" accept=".pdf" />
+          <div class="pdf-zone-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg></div>
+          <div class="pdf-zone-text"><strong>PDF sürükle</strong> ya da tıkla</div>
+        </div>
+        <div class="pdf-loaded" id="pdfLoaded">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          <span class="pdf-loaded-name" id="pdfName">—</span>
+          <button class="pdf-clear" id="pdfClear">×</button>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="panelLink">
+        <div class="link-row">
+          <input type="url" id="linkInput" placeholder="https://..." />
+          <button class="link-fetch-btn" id="fetchBtn" onclick="fetchLink()">Çek</button>
+        </div>
+        <div class="link-status" id="linkStatus"></div>
+        <p style="font-size:11.5px;color:var(--muted);line-height:1.5">Link açılmazsa içeriği kopyalayıp <strong>Metin</strong> sekmesine yapıştırın.</p>
+      </div>
+
+      <div class="tab-panel" id="panelText">
+        <textarea id="dersIcerik" placeholder="Dersin konularını, amaçlarını, haftalık içeriğini yazın..."></textarea>
+      </div>
+    </div>
+
+    <div class="err-box" id="errBox"></div>
+
+    <button class="analyze-btn" id="analyzeBtn" onclick="analyze()">
+      <svg id="btnIcon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span id="btnText">Ortak İçerikleri Bul</span>
+    </button>
+  </div>
+  <div class="sidebar-footer">Claude AI · Ctrl+Enter ile analiz<br><span style="margin-top:4px;display:block">Tasarım &amp; Geliştirme: <strong style="color:#555">Emre Yıldırım</strong></span></div>
+</aside>
+
+<main class="main">
+  <div class="page-title">İçerik Örtüşme Analizi</div>
+  <div class="page-sub">Yeni ders bilgilerini girin — mevcut <strong>93</strong> seçmeli ders ile karşılaştırılır.</div>
+  <div class="state-empty" id="stateEmpty">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <p>Soldaki formu doldurun ve <strong>Ortak İçerikleri Bul</strong>'a tıklayın.</p>
+  </div>
+  <div class="state-loading" id="stateLoading">
+    <div class="loading-spinner"></div>
+    <div class="loading-label" id="loadingLabel">Analiz ediliyor…</div>
+  </div>
+  <div class="results" id="resultsArea">
+    <div class="summary-card">
+      <div class="summary-label">Genel Değerlendirme</div>
+      <div class="summary-text" id="summaryText"></div>
+    </div>
+    <div class="results-header">
+      <div class="results-title">Örtüşen Dersler</div>
+      <div class="count-pill" id="countPill">0 sonuç</div>
+    </div>
+    <div id="matchList"></div>
+  </div>
+</main>
+
+</div><!-- /layout -->
+
+<script>
+const COURSES = [{"kod":"SEC100","ad":"RADYASYON DOZİMETRİSİ","icerik":""},{"kod":"SEC107","ad":"ADLİ BİLİMLERDE OLAY YERİ İNCELEME STRATEJİLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC107%20Adli%20Bilimlerde%20Olay%20Yeri%20%C4%B0nceleme.pdf"},{"kod":"SEC108","ad":"ADLİ BİLİMLERDE DNA'NIN ÖNEMİ VE YERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC108%20Adli%20Bilimlerde%20DNA%20n%C4%B1n%20%C3%96nemi.pdf"},{"kod":"SEC116","ad":"KIBRIS TÜRK MÜCADELE TARİHİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC116%20K%C4%B1br%C4%B1s%20T%C3%BCrk%20M%C3%BCcadele%20Tarihi.pdf"},{"kod":"SEC127","ad":"TARİHSEL SÜREÇ İÇİNDE TÜRK MÜZİĞİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC127%20Tarihsel%20S%C3%BCre%C3%A7%20%C4%B0%C3%A7inde%20T%C3%BCrk%20M%C3%BCzi%C4%9Fi%20TR.pdf"},{"kod":"SEC128","ad":"KÜLTÜREL MÜZİKOLOJİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC128%20K%C3%BClt%C3%BCrel%20M%C3%BCzikoloji%20TR.pdf"},{"kod":"SEC131","ad":"ATATÜRK'ÜN MODERNLEŞMEMODELİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC131%20Atat%C3%BCrk%20%C3%BCn%20Modernle%C5%9Fme%20Modeli%20TR.pdf"},{"kod":"SEC132","ad":"PLASTİK SANATLAR I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC132%20Plastik%20Sanatlar%20I%20-T%C3%BCrk%C3%A7e.pdf"},{"kod":"SEC140","ad":"DOĞU'DA VE BATI'DA KAMUOYU TARİHİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC140%20Do%C4%9Fu%20da%20ve%20Bat%C4%B1%20da%20Kamuoyu%20Tarihi%20TR.pdf"},{"kod":"SEC148","ad":"TÜRK SİYASİ TARİHİ (1945-1980)","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC148%20T%C3%BCrk%20Siyasi%20Tarihi%20(1945-1980)%20TR.pdf"},{"kod":"SEC154","ad":"SANATSAL MATEMATİK","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC154%20Sanatsal%20Matematik.pdf"},{"kod":"SEC155","ad":"DÜNYA TARİHİNDE TÜRKLER","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC155%20D%C3%BCnya%20Tarihinde%20T%C3%BCrkler.pdf"},{"kod":"SEC159","ad":"ANADOLUDAKİ ANTİK KENTLER","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC159%20Anadoludaki%20Antik%20Kentler.pdf"},{"kod":"SEC160","ad":"ANTİK YUNAN MİMARLIĞI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC160%20Ancient%20Greek%20Architecture.pdf"},{"kod":"SEC162","ad":"TİYATRO VE TASARIM","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC162%20Tiyatro%20ve%20Tasar%C4%B1m.pdf"},{"kod":"SEC164","ad":"YARATICI DRAMA","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC164%20Yarat%C4%B1c%C4%B1%20Drama.pdf"},{"kod":"SEC166","ad":"TİYATRO","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC166%20Tiyatro.pdf"},{"kod":"SEC167","ad":"DİKSİYON","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC167%20Diksiyon.pdf"},{"kod":"SEC168","ad":"ESTETİK VE MİMARLIK","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC168%20Estetik%20ve%20Mimarl%C4%B1k.pdf"},{"kod":"SEC169","ad":"TÜRK HALK OYUNLARI I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC169%20T%C3%BCrk%20Halk%20Oyunlar%C4%B1%20I.pdf"},{"kod":"SEC170","ad":"TÜRK HALK OYUNLARI II","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC170%20T%C3%BCrk%20Halk%20Oyunlar%C4%B1%20II.pdf"},{"kod":"SEC171","ad":"TÜRK HALK MÜZİĞİ I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC171T%C3%BCrk%20Halk%20M%C3%BCzi%C4%9Fi%201.pdf"},{"kod":"SEC172","ad":"TÜRK HALK MÜZİĞİ II","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC172%20T%C3%BCrk%20Halk%20M%C3%BCzi%C4%9Fi%20II.pdf"},{"kod":"SEC173","ad":"KLASİK TÜRK MÜZİĞİ I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC173%20Klasik%20T%C3%BCrk%20M%C3%BCzi%C4%9Fi%20I.pdf"},{"kod":"SEC174","ad":"KLASİK TÜRK MÜZİĞİ II","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC174%20Klasik%20T%C3%BCrk%20M%C3%BCzi%C4%9Fi%20II.pdf"},{"kod":"SEC181","ad":"RÖNESANSTAN GÜNÜMÜZE TİYATRO TARİHİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC181%20R%C3%B6nesans%20tan%20G%C3%BCn%C3%BCm%C3%BCze%20Tiyatro%20Tarihi.pdf"},{"kod":"SEC182","ad":"TÜRK BASIN TARİHİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC182%20T%C3%BCrk%20Bas%C4%B1n%20Tarihi.pdf"},{"kod":"SEC186","ad":"YÖNETİMDE İNSAN İLİŞKİLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC186%20%20Y%C3%B6netimde%20%C4%B0nsan%20%C4%B0li%C5%9Fkileri.pdf"},{"kod":"SEC189","ad":"FİNANSAL OKURYAZARLIK","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC189%20Finansal%20Okuryazarl%C4%B1k.pdf"},{"kod":"SEC190","ad":"LAB. SONUÇLARININ KALİTESİ VE AKREDİTASYON","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC190%20Laboratuvar%20deney%20sonu%C3%A7lar%C4%B1n%C4%B1n%20kalitesinin%20temini%20ve%20laboratuvar%20akreditasyonu.pdf"},{"kod":"SEC198","ad":"SUALTI VE YABAN HAYAT FOTOĞRAFÇILIĞI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC198%20Sualti%20ve%20Yaban%20Hayat%20Foto%C4%9Fraf%C3%A7%C4%B1l%C4%B1%C4%9F%C4%B1.pdf"},{"kod":"SEC199","ad":"DİJİTAL ORTAMDA FOTOĞRAFÇILIK","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC199%20Dijital%20Ortamda%20Foto%C4%9Fraf%C3%A7%C4%B1l%C4%B1k.pdf"},{"kod":"SEC200","ad":"İLERİ DÜZEY DİJİTAL FOTOĞRAFÇILIK","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC200%20%C4%B0leri%20D%C3%BCzey%20Dijital%20Foto%C4%9Fraf%C3%A7%C4%B1l%C4%B1k.pdf"},{"kod":"SEC204","ad":"YUNAN VE ROMA MİTOLOJİSİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC204%20Yunan%20ve%20Roma%20Mitolojisi.pdf"},{"kod":"SEC206","ad":"MÜZİK FELSEFESİNE GİRİŞ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC206%20M%C3%BCzik%20Felsefesine%20Giri%C5%9F.pdf"},{"kod":"SEC209","ad":"ERASMUS İÇİN ALMANCA","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC209%20Erasmus%20icin%20Almanca.pdf"},{"kod":"SEC216","ad":"YENİ MEDYA VE İLETİ TASARIMI","icerik":"https://fs.hacettepe.edu.tr/secmeli/formlar/SEC216%20Yeni%20Medya%20ve%20%C4%B0leti%20Tasar%C4%B1m%C4%B1.pdf"},{"kod":"SEC218","ad":"TARİH VE MEDYA","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC218%20Tarih%20ve%20Medya.pdf"},{"kod":"SEC220","ad":"BİTKİSEL ÜRÜNLERİN TOKSİK ETKİLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC220%20Bitkisel%20%C3%9Cr%C3%BCnlerin%20Toksik%20Etkileri%20Bolog.pdf"},{"kod":"SEC222","ad":"NANOTOKSİKOLOJİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC222%20Nanotoksikoloji.pdf"},{"kod":"SEC225","ad":"TOEFL IBT İÇİN HAZIRLIK I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC225%20TOEFL%20IBT%20i%C3%A7in%20Haz%C4%B1rl%C4%B1k%20I.pdf"},{"kod":"SEC226","ad":"YABANCI DİL OLARAK TÜRKÇE ÖĞRETİMİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC226%20Yabanc%C4%B1%20Dil%20Olarak%20T%C3%BCrk%C3%A7e%20%C3%96%C4%9Fretimi%20TR.pdf"},{"kod":"SEC228","ad":"EĞİTİM EKONOMİSİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC228%20E%C4%9Fitim%20Ekonomisi.pdf"},{"kod":"SEC232","ad":"PLASTİK SANATLAR II","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC232%20%20Plastik%20Sanatlar%20II%20T%C3%BCrk%C3%A7e.pdf"},{"kod":"SEC234","ad":"MİLLİ MÜCADELE DÖNEMİ SANAT VE EDEBİYATI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC234%20Milli%20M%C3%BCcadele%20D%C3%B6nemi%20Sanat%20ve%20Edebiyat%C4%B1%20T%C3%BCrk%C3%A7e.pdf"},{"kod":"SEC236","ad":"ETKİLİ İLETİŞİM BECERİLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC236%20Etkili%20%C4%B0leti%C5%9Fim%20Becerileri.pdf"},{"kod":"SEC240","ad":"TASARI GEOMETRİ VE TEKNİK RESİM","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC240%20Tasar%C4%B1_Geometri_ve_Teknik_Resim.pdf"},{"kod":"SEC244","ad":"AHŞAP TEKNOLOJİSİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC244%20Ah%C5%9Fap%20Teknolojisi.pdf"},{"kod":"SEC248","ad":"İNGİLİZCE ANLATIM BECERİLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC248%20%C4%B0ngilizce%20Anlat%C4%B1m%20Becerileri.pdf"},{"kod":"SEC250","ad":"SÖZSÜZ İLETİŞİM VE GÖSTERGEBİLİM","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC250%20S%C3%B6zs%C3%BCz%20%C4%B0leti%C5%9Fim%20ve%20E%C4%9Fitimsel%20G%C3%B6stergebilim.pdf"},{"kod":"SEC253","ad":"DÜNYADA GÖÇ VE NÜFUS HAREKETLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC253%20D%C3%BCnyada%20G%C3%B6%C3%A7%20ve%20N%C3%BCfus%20Hareketleri.pdf"},{"kod":"SEC254","ad":"PREHİSTORİK SANAT","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC254%20Prehistorik%20Sanat.pdf"},{"kod":"SEC255","ad":"ÇEVRE GERİ DÖNÜŞÜM VE ATIK YÖNETİMİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC_255_Cevre_Geri_Donusum_Atik%20Yonetimi_Bilgi%20Paketi.pdf"},{"kod":"SEC260","ad":"TÜRK İŞARET DİLİ I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC260%20T%C3%BCr%C3%A7e%20%C4%B0%C5%9Faret%20Dili%20I.pdf"},{"kod":"SEC262","ad":"KİŞİSEL BAKIM ÜRÜNLERİNİN TOKSİK ETKİLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC262%20Ki%C5%9Fisel%20Bak%C4%B1m%20%C3%9Cr%C3%BCnlerinin%20Toksik%20Etkileri%20(1).pdf"},{"kod":"SEC268","ad":"SOSYOLOJİYE GİRİŞ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC268%20Sosyolojiye%20Giris.pdf"},{"kod":"SEC269","ad":"GÖRSEL SANATLARDA İKONOGRAFİK İNCELEMELER","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC269%20G%C3%B6rsel%20Sanatlarda%20%C4%B0konografik%20%C4%B0ncelemeler.pdf"},{"kod":"SEC270","ad":"TÜRK İŞARET DİLİ II","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC270%20%20T%C3%BCrk%C3%A7e%20%C4%B0%C5%9Faret%20Dili%20II.pdf"},{"kod":"SEC271","ad":"İŞ SAĞLIĞI VE GÜVENLİĞİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC271%20%C4%B0%C5%9F%20Sa%C4%9Fl%C4%B1%C4%9F%C4%B1%20ve%20G%C3%BCvenli%C4%9Fi.pdf"},{"kod":"SEC272","ad":"TOPLUMSAL CİNSİYET VE BEDEN SOSYOLOJİSİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC272%20Toplumsal%20Cinsiyet%20ve%20Beden%20Sosyolojisi.pdf"},{"kod":"SEC274","ad":"SERAMİK I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC274%20SERAM%C4%B0K%20I%20TR.pdf"},{"kod":"SEC279","ad":"HUKUK VE İNGİLİZCE","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC279%20Hukuk%20ve%20%C4%B0ngilizce.pdf"},{"kod":"SEC284","ad":"SERAMİK II","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC284%20SERAM%C4%B0K%20%20II%20%20TR.pdf"},{"kod":"SEC287","ad":"İNSANSIZ HAVA ARACI TEKNOLOJİLERİ I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC287%20%C4%B0nsans%C4%B1z%20Hava%20Arac%C4%B1%20Teknolojileri%20ve%20U%C3%A7u%C5%9F%20E%C4%9Fitimi%201.pdf"},{"kod":"SEC289","ad":"İNSANSIZ HAVA ARACI TEKNOLOJİLERİ II","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC289%20%C4%B0nsans%C4%B1z%20Hava%20Arac%C4%B1%20Teknolojileri%20ve%20U%C3%A7u%C5%9F%20E%C4%9Fitimi%202.pdf"},{"kod":"SEC292","ad":"TEHLİKEDEKİ TÜRK DİL VE DİYALEKTLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC292%20Tehlikedeki%20T%C3%BCrk%20Dil%20ve%20Diyalektleri.pdf"},{"kod":"SEC296","ad":"SÖMÜRGECİLİK VE STRATEJİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC296%20S%C3%B6m%C3%BCrgecilik%20ve%20Strateji.pdf"},{"kod":"SEC303","ad":"TEMEL MÜZİK KURAMLARI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC303-Temel%20M%C3%BCzik%20Kuramlar%C4%B1.pdf"},{"kod":"SEC304","ad":"DUYGULARIN TARİHİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC304%20Duygular%C4%B1n%20Tarihi.pdf"},{"kod":"SEC319","ad":"MODERN TÜRKİYE'NİN TARİHİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC319%20Modern%20T%C3%BCrkiyenin%20Tarihi.pdf"},{"kod":"SEC320","ad":"SÜRDÜRÜLEBİLİRLİĞE GİRİŞ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC_320_Introduction_to_Sustainability_Course_Information.pdf"},{"kod":"SEC321","ad":"KORUMA BİYOLOJİSİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC321%20Koruma%20Biyolojisi.pdf"},{"kod":"SEC326","ad":"FOTOĞRAF I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC326%20%20FOTO%C4%9ERAF%20I%20T%C3%BCrk%C3%A7e.pdf"},{"kod":"SEC330","ad":"GEÇMİŞTEN GÜNÜMÜZE TÜRKLERDE İNANÇ VE RİTÜELLER","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC330%20Ge%C3%A7mi%C5%9Ften%20G%C3%BCn%C3%BCm%C3%BCze%20T%C3%BCrklerde%20%C4%B0nan%C3%A7%20ve%20Rit%C3%BCeller.pdf"},{"kod":"SEC332","ad":"TELEVİZYON SİNEMA I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC332%20TV%20S%20I%20T%C3%BCrk%C3%A7e.pdf"},{"kod":"SEC340","ad":"BEL VE BOYUN SAĞLIĞI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC340%20Bel%20ve%20Boyun%20Sa%C4%9Fl%C4%B1%C4%9F%C4%B1.pdf"},{"kod":"SEC342","ad":"YOGA","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC342%20Yoga.pdf"},{"kod":"SEC344","ad":"ENGELLİLERDE FİZİKSEL AKTİVİTE","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC344%20Engellilerde%20Fiziksel%20Aktivite.pdf"},{"kod":"SEC346","ad":"TAMAMLAYICI TERAPİLER","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC346%20Tamamlay%C4%B1c%C4%B1%20Terapiler.pdf"},{"kod":"SEC359","ad":"YAŞLILIK VE RUH SAĞLIĞI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC359%20Ya%C5%9Fl%C4%B1l%C4%B1k%20ve%20Ruh%20Sa%C4%9Fl%C4%B1%C4%9F%C4%B1.pdf"},{"kod":"SEC362","ad":"TEMEL PSİKOLOJİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC362%20Temel%20Psikoloji.pdf"},{"kod":"SEC364","ad":"GENEL PSİKOLOJİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC364%20Genel%20Psikoloji.pdf"},{"kod":"SEC367","ad":"ÖĞRENCİLER İÇİN LİDERLİĞE GİRİŞ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC367%20%C3%96%C4%9Frenciler%20i%C3%A7in%20Liderli%C4%9Fe%20Giri%C5%9F.pdf"},{"kod":"SEC372","ad":"SOSYAL PSİKOLOJİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC372%20Sosyal%20Psikoloji.pdf"},{"kod":"SEC373","ad":"İLETİŞİM İÇİN ALMANCA","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC373%20%C4%B0leti%C5%9Fim%20i%C3%A7in%20Almanca.pdf"},{"kod":"SEC377","ad":"SÜRDÜRÜLEBİLİR YAŞAM","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC377%20S%C3%BCrd%C3%BCr%C3%BClebilir%20Ya%C5%9Fam.pdf"},{"kod":"SEC383","ad":"MİMARİ MİRASI KORUMA İLKE VE UYGULAMALARI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC383%20Mimari%20Miras%C4%B1%20Koruma%20%C4%B0lke%20ve%20Uygulamalar%C4%B1_d%C3%BCzeltildi.pdf"},{"kod":"SEC402","ad":"İKİ BOYUTLU BİLGİSAYAR DESTEKLİ ÇİZİM","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC402%20%C4%B0ki%20Boyutlu%20Bilgisayar%20Destekli%20%C3%87izim.pdf"},{"kod":"SEC414","ad":"MARKALAMA VE İTİBAR YÖNETİMİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC414%20Markala%C5%9Fma%20ve%20%C4%B0tibar%20Y%C3%B6netimi.pdf"},{"kod":"SEC421","ad":"TASARIM SANAT VE MİMARLIK","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC421%20Tasar%C4%B1m%20Sanat%20ve%20Mimarl%C4%B1k%20TR.pdf"},{"kod":"SEC422","ad":"BİLGİSAYAR DESTEKLİ HARİTA YAPIMI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC422%20Bilgisayar%20Destekli%20Harita%20Yap%C4%B1m%C4%B1.pdf"},{"kod":"SEC426","ad":"ENERJİ TASARRUFU VE VERİMLİLİĞİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC426%20Enerji%20Tasarrufu%20ve%20Verimlili%C4%9Fi.pdf"},{"kod":"SEC451","ad":"SAĞLIK VE ERGONOMİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC451%20Sa%C4%9Fl%C4%B1k%20ve%20Ergonomi.pdf"},{"kod":"SEC460","ad":"TIBBİ TERMİNOLOJİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC460%20T%C4%B1bbi%20Terminoloji.pdf"},{"kod":"SEC462","ad":"YÜZEY BİLİMİNDEN NANOYAPILARA","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC462%20Y%C3%BCzey%20Biliminden%20Nanoyap%C4%B1lara.pdf"},{"kod":"SEC467","ad":"POPÜLER MÜZİK","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC467%20Pop%C3%BCler%20%20M%C3%BCzik%20TR.pdf"},{"kod":"SEC469","ad":"DRAMA VE MÜZİKLİ OYUNLAR","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC469%20Drama%20ve%20M%C3%BCzikli%20Oyunlar%20TR.pdf"},{"kod":"SEC476","ad":"YABANCI GÖZÜYLE ATATÜRK VE TÜRKİYE","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC476%20Yabanc%C4%B1%20G%C3%B6z%C3%BCyle%20Atat%C3%BCrk%20ve%20T%C3%BCrkiye.pdf"},{"kod":"SEC478","ad":"SPSS UYGULAMALI VERİ ANALİZİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC478%20Ara%C5%9Ft%C4%B1rma%20Y%C3%B6ntemlerinde%20SPSS%20Uygulamal%C4%B1%20Veri%20Analizi%20TR.pdf"},{"kod":"SEC479","ad":"ÇOCUK İHMALİ VE İSTİSMARINI TANIMA","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC479%20%C3%87ocuk%20%C4%B0hmalini%20ve%20%C4%B0stismar%C4%B1n%C4%B1%20Tan%C4%B1ma%20ve%20%C3%96nleme-1.pdf"},{"kod":"SEC484","ad":"RADYASYON VE SAĞLIĞIMIZ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC484%20Radyasyon%20ve%20Sa%C4%9Fl%C4%B1%C4%9F%C4%B1m%C4%B1z%20TR.pdf"},{"kod":"SEC487","ad":"RADYASYON BİYOFİZİĞİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC487%20Radyasyon%20Biyofizi%C4%9Fi.pdf"},{"kod":"SEC493","ad":"ANADOLUDA HELLENİSTİK DÖNEM MİMARLIĞI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC493%20Anadoluda%20Helenistik%20D%C3%B6nem%20Mimarl%C4%B1%C4%9F%C4%B1.pdf"},{"kod":"SEC497","ad":"HÜCRE BİYOMALZEME TEMELLİ REJENERATİF TIP","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC497%20H%C3%BCcre%20Biyomalzeme%20Temelli%20Rejeneratif%20T%C4%B1p.pdf"},{"kod":"SEC498","ad":"KUANTUM TEKNOLOJİLERİNE GİRİŞ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC498.pdf"},{"kod":"SEC500","ad":"KARİYER GELİŞTİRME VE YÖNETİMİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC500%20Kariyer%20Geli%C5%9Ftirme%20Planlama%20ve%20Y%C3%B6netimi.pdf"},{"kod":"SEC502","ad":"HAT SANATI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC502%20Hat%20Sanat%C4%B1.pdf"},{"kod":"SEC510","ad":"ENERJİ SEKTÖRÜNDE MÜHENDİSLİK","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC510%20Enerji%20Sekt%C3%B6r%C3%BCnde%20M%C3%BChendislik.pdf"},{"kod":"SEC513","ad":"BAĞIMLILIĞI ÖNLEME VE BAĞIMLILIKLA MÜCADELE","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC513%20Ba%C4%9F%C4%B1ml%C4%B1l%C4%B1%C4%9F%C4%B1%20%C3%96nleme%20ve%20Ba%C4%9F%C4%B1ml%C4%B1l%C4%B1kla%20M%C3%BCcadele%20TR.pdf"},{"kod":"SEC520","ad":"KLİNİK ARAŞTIRMALARIN TEMEL İLKELERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC%20520%20Klinik%20Ara%C5%9Ft%C4%B1rmalar%C4%B1n%C4%B1n%20Temel%20%C4%B0lkeleri.pdf"},{"kod":"SEC524","ad":"GİTAR ENSTRÜMANı EĞİTİMİ I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC524%20Gitar%20Enstr%C3%BCman%C4%B1%20E%C4%9Fitimi%20I.pdf"},{"kod":"SEC526","ad":"SAĞLIK VE TOPLUM","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC526%20Sa%C4%9Fl%C4%B1k%20ve%20Toplum.pdf"},{"kod":"SEC544","ad":"GEÇMİŞTEN GÜNÜMÜZE ANKARA","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC544%20Ge%C3%A7mi%C5%9Ften%20G%C3%BCn%C3%BCm%C3%BCze%20Ankara.pdf"},{"kod":"SEC551","ad":"TARİH BOYUNCA TÜRK KADINI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC551Tarih%20Boyunca%20T%C3%BCrk%20Kad%C4%B1n%C4%B1.pdf"},{"kod":"SEC555","ad":"SAĞLIK KURUMLARINDA İLETİŞİM BECERİLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC555%20Sa%C4%9Fl%C4%B1k%20Kurumlar%C4%B1nda%20%C4%B0leti%C5%9Fim%20Becerileri.pdf"},{"kod":"SEC565","ad":"RUSYA TARİHİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC565%20Rusya%20Tarihi%20Ba%C5%9Flang%C4%B1c%C4%B1ndan%201917%20ye%20Kadar.pdf"},{"kod":"SEC568","ad":"19. YÜZYIL SİYASİ TARİHİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC568%2019.%20Y%C3%BCzy%C4%B1l%20Siyasi%20Tarihi.pdf"},{"kod":"SEC569","ad":"20. YÜZYIL SİYASİ TARİHİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC569%2020.%20Y%C3%BCzy%C4%B1l%20Siyasi%20Tarihi.pdf"},{"kod":"SEC573","ad":"İLK YARDIM","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC573%20%C4%B0lk%20Yard%C4%B1m.pdf"},{"kod":"SEC576","ad":"PROFESYONEL SUNUM TEKNİKLERİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC576%20Profesyonel%20Sunum%20Teknikleri.pdf"},{"kod":"SEC580","ad":"SOSYAL EPİDEMİYOLOJİ I","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC580%20Sosyal%20Epidemiyoloji%20I.pdf"},{"kod":"SEC582","ad":"DOĞU ASYA ÇALIŞMALARI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC582%20Do%C4%9Fu%20Asya%20%C3%87al%C4%B1%C5%9Fmalar%C4%B1.pdf"},{"kod":"SEC583","ad":"İKLİM KRİZİ VE SAĞLIĞIMIZ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC583%20%C4%B0klim%20Krizinin%20Etkileri%20%C4%B0le%20M%C3%BCcadele%20ve%20Sa%C4%9Fl%C4%B1%C4%9F%C4%B1m%C4%B1z%20TR.pdf"},{"kod":"SEC595","ad":"ÇAĞDAŞ İRAN SANATI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC595%20%C3%87a%C4%9Fda%C5%9F%20%C4%B0ran%20Sanat%C4%B1.pdf"},{"kod":"SEC596","ad":"FİZİKSEL OKURYAZARLIK","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC596%20Fiziksel%20Okuryazarl%C4%B1k%20T%C3%BCrk%C3%A7e%20Ders%20paketi.pdf"},{"kod":"SEC623","ad":"BİLİM DİPLOMASİSİ","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC623%20Bilim%20Diplomasisi.pdf"},{"kod":"SEC624","ad":"İNSAN HAKLARI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC624%20%C4%B0nsan%20Haklar%C4%B1.pdf"},{"kod":"SEC625","ad":"GÖNÜLLÜLÜK ÇALIŞMALARI","icerik":"https://fs.hacettepe.edu.tr/secmeli/DERSBILGIPAKETI/SEC625%20G%C3%B6n%C3%BCll%C3%BCl%C3%BCk%20%C3%87al%C4%B1%C5%9Fmalar%C4%B1%20Ders%20Bilgi%20Paketi.pdf"}];
+
+document.getElementById('dbCount').textContent = COURSES.length;
+
+// ── API KEY YÖNETİMİ ──
+function enterApp() {
+  const raw = document.getElementById('welcomeKeyInput').value;
+  const key = raw.replace(/[^\x20-\x7E]/g,'').trim();
+  const err = document.getElementById('welcomeErr');
+  if (!key.startsWith('sk-ant-')) {
+    err.textContent = '"sk-ant-" ile başlamalı. Kopyalarken fazladan karakter gelmiş olabilir.';
+    err.style.display = 'block'; return;
+  }
+  localStorage.setItem('anthropic_key', key);
+  err.style.display = 'none';
+  document.getElementById('welcomeOverlay').style.display = 'none';
+  document.getElementById('appLayout').style.display = 'flex';
+}
+
+function changeKey() {
+  localStorage.removeItem('anthropic_key');
+  document.getElementById('welcomeKeyInput').value = '';
+  document.getElementById('welcomeErr').style.display = 'none';
+  document.getElementById('apiOk') && (document.getElementById('apiOk').style.display = 'none');
+  document.getElementById('appLayout').style.display = 'none';
+  document.getElementById('welcomeOverlay').style.display = 'flex';
+}
+
+function getApiKey() {
+  return (localStorage.getItem('anthropic_key') || '').replace(/[^\x20-\x7E]/g,'').trim();
+}
+
+// Sayfa açılışında anahtar varsa doğrudan uygulama göster
+window.addEventListener('DOMContentLoaded', () => {
+  if (getApiKey()) {
+    document.getElementById('welcomeOverlay').style.display = 'none';
+    document.getElementById('appLayout').style.display = 'flex';
+  }
+});
+
+// Enter tuşuyla giriş
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('welcomeOverlay').style.display !== 'none') {
+    enterApp();
+  }
+});
+
+// ── TAB YÖNETİMİ ──
+let activeTab = 'pdf', pdfText = '', linkText = '';
+function switchTab(t) {
+  activeTab = t;
+  ['Pdf','Link','Text'].forEach(x => {
+    document.getElementById('tab'+x).classList.toggle('active', x.toLowerCase()===t);
+    document.getElementById('panel'+x).classList.toggle('active', x.toLowerCase()===t);
+  });
+}
+
+// ── PDF ──
+const zone = document.getElementById('pdfZone');
+['dragover','dragenter'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.add('drag-over'); }));
+['dragleave','dragend','drop'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.remove('drag-over'); }));
+zone.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if(f) loadPdf(f); });
+document.getElementById('pdfInput').addEventListener('change', function(){ if(this.files[0]) loadPdf(this.files[0]); });
+document.getElementById('pdfClear').addEventListener('click', () => {
+  pdfText = '';
+  document.getElementById('pdfLoaded').style.display = 'none';
+  document.getElementById('pdfInput').value = '';
+});
+
+async function loadPdf(file) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) { showErr('Sadece PDF yükleyebilirsiniz.'); return; }
+  setLoading(true, 'PDF okunuyor…');
+  try {
+    const ab = await file.arrayBuffer();
+    pdfText = await extractPdfText(ab);
+    if (!pdfText.trim()) throw new Error('PDF\'den metin okunamadı (taranmış görsel PDF olabilir).');
+    document.getElementById('pdfLoaded').style.display = 'flex';
+    document.getElementById('pdfName').textContent = file.name + ' · ' + pdfText.length + ' karakter';
+    hideErr();
+  } catch(e) { showErr(e.message); }
+  finally { setLoading(false); }
+}
+
+async function extractPdfText(ab) {
+  if (!window.pdfjsLib) {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+  let text = '';
+  for (let i=1; i<=Math.min(pdf.numPages,10); i++) {
+    const page = await pdf.getPage(i);
+    const c = await page.getTextContent();
+    text += c.items.map(s=>s.str).join(' ') + '\n';
+  }
+  return text.slice(0,5000);
+}
+
+function loadScript(src) {
+  return new Promise((res,rej) => {
+    const s = document.createElement('script'); s.src=src;
+    s.onload=res; s.onerror=rej; document.head.appendChild(s);
+  });
+}
+
+// ── LİNK ──
+async function fetchLink() {
+  const url = document.getElementById('linkInput').value.trim();
+  if (!url) return;
+  const btn = document.getElementById('fetchBtn');
+  const status = document.getElementById('linkStatus');
+  btn.disabled=true; btn.textContent='…';
+  status.className='link-status'; status.style.display='none';
+  try {
+    const r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url));
+    if (!r.ok) throw new Error('Bağlantı hatası');
+    const d = await r.json();
+    const raw = d.contents||'';
+    if (!raw) throw new Error('İçerik boş geldi');
+    const tmp = document.createElement('div');
+    tmp.innerHTML = raw;
+    linkText = (tmp.innerText||tmp.textContent||'').replace(/\s+/g,' ').slice(0,5000);
+    if (!linkText.trim()) throw new Error('Metin çıkarılamadı');
+    status.textContent = '✓ İçerik alındı · '+linkText.length+' karakter';
+    status.className='link-status ok';
+    hideErr();
+  } catch(e) {
+    linkText = 'Ders linki: ' + url;
+    status.textContent = '✗ Direkt erişim engellendi — ders adı ve link ile analiz yapılacak.';
+    status.className='link-status err';
+  }
+  btn.disabled=false; btn.textContent='Çek';
+}
+
+// ── ANALİZ ──
+async function analyze() {
+  const ad = document.getElementById('dersAdi').value.trim();
+  const kod = document.getElementById('dersKodu').value.trim();
+  let icerik = activeTab==='pdf' ? pdfText : activeTab==='link' ? linkText : document.getElementById('dersIcerik').value.trim();
+
+  if (!ad)     { showErr('Ders adı zorunludur.'); return; }
+  if (!icerik) { showErr('İçerik ekleyin: PDF yükleyin, link çekin veya metin yazın.'); return; }
+
+  const apiKey = getApiKey();
+  if (!apiKey) { changeKey(); return; }
+
+  hideErr();
+  setLoading(true, 'Claude ile analiz ediliyor…');
+  document.getElementById('stateEmpty').style.display='none';
+  document.getElementById('resultsArea').style.display='none';
+
+  const courseList = COURSES.map(c=>`${c.kod}: ${c.ad}`).join('\n');
+  const prompt = `Hacettepe Üniversitesi seçmeli ders eşleştirmesi yap.
+
+YENİ DERS:
+Ad: ${ad}${kod?' ('+kod+')':''}
+İçerik: ${icerik.slice(0,2000)}
+
+MEVCUT DERSLER:
+${courseList}
+
+Yeni dersin içeriğini analiz et, mevcut derslerden en fazla 8 tanesini seç, ortak içerikleri tespit et.
+
+SADECE geçerli JSON döndür, başka hiçbir şey yazma:
+{"ozet":"2 cümle değerlendirme","eslesmeler":[{"kod":"SECXXX","ad":"ders adı","puan":85,"ortak_konular":["konu1","konu2"],"aciklama":"1 cümle"}]}
+
+Kurallar: puan 0-100, sadece puan>=35, max 8 ders, yüksekten düşüğe, Türkçe.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version':'2023-06-01'
+      },
+      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:2000, messages:[{role:'user',content:prompt}] })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.error?.message || 'API hatası ' + res.status);
+    }
+    const d = await res.json();
+    const txt = d.content.map(b=>b.text||'').join('');
+    const clean = txt.replace(/```json|```/g,'').trim();
+    renderResults(JSON.parse(clean));
+  } catch(e) {
+    showErr('Hata: ' + e.message);
+    document.getElementById('stateEmpty').style.display='flex';
+  } finally { setLoading(false); }
+}
+
+function renderResults(data) {
+  document.getElementById('summaryText').textContent = data.ozet||'';
+  const list = document.getElementById('matchList');
+  list.innerHTML='';
+  const ms = data.eslesmeler||[];
+  document.getElementById('countPill').textContent = ms.length+' sonuç';
+  const map = Object.fromEntries(COURSES.map(c=>[c.kod,c.icerik]));
+  if (!ms.length) {
+    list.innerHTML='<p style="color:var(--muted);font-size:13px;padding:16px 0">Anlamlı örtüşme bulunamadı.</p>';
+  } else {
+    ms.forEach(m => {
+      const sc = m.puan>=70?'score-high':m.puan>=40?'score-mid':'score-low';
+      const tags = (m.ortak_konular||[]).map(t=>`<span class="tag">${t}</span>`).join('');
+      const pdf = map[m.kod];
+      const pdfBtn = pdf?`<a href="${pdf}" target="_blank" class="pdf-btn"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Ders Paketi</a>`:'';
+      list.innerHTML+=`<div class="match-card">
+        <div class="match-top"><span class="match-code">${m.kod}</span><span class="match-name">${m.ad}</span><span class="score-pill ${sc}">%${m.puan}</span></div>
+        <div class="tags-label">Ortak konular</div><div class="tags">${tags}</div>
+        <div class="match-footer"><span class="match-reason">${m.aciklama||''}</span>${pdfBtn}</div>
+      </div>`;
+    });
+  }
+  document.getElementById('resultsArea').style.display='block';
+}
+
+function setLoading(on,lbl='') {
+  const btn=document.getElementById('analyzeBtn');
+  const icon=document.getElementById('btnIcon');
+  document.getElementById('loadingLabel').textContent=lbl;
+  btn.disabled=on; icon.classList.toggle('spin',on);
+  document.getElementById('btnText').textContent=on?'İşleniyor…':'Ortak İçerikleri Bul';
+  document.getElementById('stateLoading').style.display=on?'flex':'none';
+}
+function showErr(m){const b=document.getElementById('errBox');b.textContent=m;b.style.display='block';}
+function hideErr(){document.getElementById('errBox').style.display='none';}
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')analyze();});
+</script>
+</body>
+</html>
